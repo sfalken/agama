@@ -108,7 +108,6 @@ storage:
   space_policy: delete
   volumes:
     - "/"
-    - "/var"
   volume_templates:
     - mount_path: "/"
       filesystem: btrfs
