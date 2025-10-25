@@ -138,5 +138,3 @@ storage:
         auto_size:
           base_min: 5 GiB
           base_max: 25 GiB
-          max_fallback_for:
-            - "/var"
