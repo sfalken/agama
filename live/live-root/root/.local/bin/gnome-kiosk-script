@@ -16,8 +16,7 @@ if [ -s  "$LANG_FILE" ]; then
   EFI_LANG=$(cat "$LANG_FILE" | tail -c +5 | tr -cd "[_a-zA-Z-]")
 
   if [ -n "$EFI_LANG" ]; then
-    # escape & because it has a special meaning in sed replacement
-    LANG_QUERY="\\&lang=$EFI_LANG"
+    LANG_QUERY="&lang=$EFI_LANG"
   fi
 fi
 
@@ -28,11 +27,21 @@ until [ "$(curl --silent --output /dev/null --write-out "%{http_code}" --head ht
 done
 
 TOKEN=$(cat $TOKEN_FILE)
-sed -e "s/__HOMEPAGE__/http:\/\/localhost\/login?token=$TOKEN$LANG_QUERY/" $PREFS.template > $PREFS
+LOGIN_URL="http://localhost/login?token=$TOKEN$LANG_QUERY"
 
-# Do not use --kiosk mode (see bsc#1236073) until SLE16 is updated to next ESR. For Firefox
-# 128.9 which is currently used the bug is valid, for >= 138 should be fixed.
-firefox --profile $HOME/.mozilla/firefox/profile
+if command -v slitherer > /dev/null 2>&1; then
+  slitherer "$LOGIN_URL"
+elif command -v firefox > /dev/null 2>&1; then
+  # escape & for sed replacement
+  FIREFOX_LANG_QUERY=$(echo "$LANG_QUERY" | sed 's/&/\\&/g')
+  sed -e "s/__HOMEPAGE__/http:\/\/localhost\/login?token=$TOKEN$LANG_QUERY/" $PREFS.template > $PREFS
+  # Do not use --kiosk mode (see bsc#1236073) until SLE16 is updated to next ESR. For Firefox
+  # 128.9 which is currently used the bug is valid, for >= 138 should be fixed.
+  firefox --profile $HOME/.mozilla/firefox/profile
+else
+  echo "ERROR: No supported browser found (slitherer or firefox)"
+  exit 1
+fi
 
 sleep 1.0
 exec "$0" "$@"
