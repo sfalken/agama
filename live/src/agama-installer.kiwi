@@ -142,7 +142,10 @@
         <package name="fontconfig"/>
         <package name="fonts-config"/>
         <package name="xauth"/>
-        <package name="MozillaFirefox"/>
+        <!-- <package name="MozillaFirefox"/> -->
+        <!-- Alternative to use lightweight QtWebEngine, rather than Firefox -->
+        <!-- Comment out MozillaFirefox above, and uncomment slitherer below -->
+        <package name="slitherer"/>
         <package name="gdm-systemd"/>
         <package name="gnome-shell"/>
         <package name="gnome-session-wayland"/>
@@ -154,7 +157,8 @@
     <packages type="image" profiles="Leap_16.1,openSUSE">
         <package name="agama-products-opensuse"/>
         <package name="grub2-branding-openSUSE" arch="aarch64,x86_64"/>
-        <package name="MozillaFirefox-branding-openSUSE"/>
+        <!-- When using slitherer, firefox branding is not needed, comment out -->
+        <!-- <package name="MozillaFirefox-branding-openSUSE"/> -->
         <package name="openSUSE-build-key"/>
         <package name="patterns-openSUSE-base"/>
         <package name="staging-build-key"/>
@@ -178,7 +182,8 @@
         <package name="suse-build-key"/>
     </packages>
     <packages type="image" profiles="SUSE_SLE_16.1">
-        <package name="MozillaFirefox-branding-SLE"/>
+        <!-- If using slitherer, firefox branding is not needed -->
+        <!-- <package name="MozillaFirefox-branding-SLE"/> -->
     </packages>
     <packages type="bootstrap">
         <package name="udev"/>
