@@ -300,7 +300,10 @@ rm -f /usr/lib/zypper/commands/zypper-migration
 rm -f /usr/lib/zypper/commands/zypper-search-packages
 
 # delete some FireFox audio codec support
-rm -f /usr/lib64/firefox/libmozavcodec.so
+# Make conditional, if using alternative browser
+if rpm -q MozillaFirefox > /dev/null 2>&1; then
+  rm -f /usr/lib64/firefox/libmozavcodec.so
+fi
 
 # uninstall libyui-qt and libqt (pulled in by the YaST dependencies),
 # not present in SLES, do not fail if not installed
