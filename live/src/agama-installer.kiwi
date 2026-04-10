@@ -144,8 +144,9 @@
         <package name="xauth"/>
         <!-- <package name="MozillaFirefox"/> -->
         <!-- Alternative to use lightweight QtWebEngine, rather than Firefox -->
-        <!-- Comment out MozillaFirefox above, and uncomment slitherer below -->
+        <!-- Comment out MozillaFirefox above, and uncomment slitherer and libQt6WebView6 below -->
         <package name="slitherer"/>
+        <package name="libQt6WebView6"/>
         <package name="gdm-systemd"/>
         <package name="gnome-shell"/>
         <package name="gnome-session-wayland"/>
