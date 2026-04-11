@@ -11,6 +11,7 @@ Environment="AGAMA_LOG=debug,zbus=info"
 Type=notify
 ExecStart=/usr/bin/agama-web-server.sh
 ExecStartPost=/usr/bin/chgrp agama-ui /run/agama/token
+ExecStartPost=/usr/bin/chmod g+r /run/agama/token
 PIDFile=/run/agama/web.pid
 User=root
 TimeoutStopSec=5
