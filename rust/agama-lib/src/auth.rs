@@ -129,7 +129,7 @@ impl AuthToken {
             .create(true)
             .truncate(true)
             .write(true)
-            .mode(0o400)
+            .mode(0o440)    // was 0o400 -- allow group read for agama-ui-group
             .open(path)?;
         file.write_all(self.0.as_bytes())?;
         Ok(())

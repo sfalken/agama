@@ -310,7 +310,7 @@ fi
 if rpm -q --whatprovides libyui-qt libyui-qt-pkg > /dev/null; then
   rpm -q --whatprovides libyui-qt libyui-qt-pkg | xargs rpm -e --nodeps
 fi
-rpm -qa | grep ^libQt | xargs --no-run-if-empty rpm -e --nodeps
+# rpm -qa | grep ^libQt | xargs --no-run-if-empty rpm -e --nodeps
 
 ## removing drivers and firmware makes the Live ISO about 370MiB smaller
 #
@@ -387,4 +387,9 @@ rm -f /lib/modules/*/vmlinux*.[gx]z
 rm -rf /var/cache/zypp/* /var/lib/zypp/AnonymousUniqueId /var/lib/systemd/random-seed
 
 # gnome-kiosk startup script, executable rights not preserved during copying
-chmod +x /root/.local/bin/gnome-kiosk-script
+chmod +x /home/liveuser/.local/bin/gnome-kiosk-script
+chown -R liveuser:liveuser /home/liveuser
+
+# Make the agama master token readable by the liveuser
+groupadd -r agama-ui
+usermod -aG agama-ui liveuser

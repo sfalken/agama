@@ -55,6 +55,7 @@
     <users>
         <!-- the password is configured during boot -->
         <user password="!*" home="/root" name="root" groups="root"/>
+        <user password="!*" home="/home/liveuser" name="liveuser" groups="liveuser"/>
     </users>
     <repository type="rpm-md">
         <source path="obsrepositories:/"/>
@@ -144,9 +145,8 @@
         <package name="xauth"/>
         <!-- <package name="MozillaFirefox"/> -->
         <!-- Alternative to use lightweight QtWebEngine, rather than Firefox -->
-        <!-- Comment out MozillaFirefox above, and uncomment slitherer and libQt6WebView6 below -->
+        <!-- Comment out MozillaFirefox above, and uncomment slitherer below -->
         <package name="slitherer"/>
-        <package name="libQt6WebView6"/>
         <package name="gdm-systemd"/>
         <package name="gnome-shell"/>
         <package name="gnome-session-wayland"/>

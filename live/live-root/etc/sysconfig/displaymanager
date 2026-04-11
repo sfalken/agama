@@ -51,7 +51,7 @@ DISPLAYMANAGER_XSERVER_TCP_PORT_6000_OPEN="no"
 # Define the user whom should get logged in without request. If string
 # is empty, display standard login dialog.
 #
-DISPLAYMANAGER_AUTOLOGIN="root"
+DISPLAYMANAGER_AUTOLOGIN="liveuser"
 
 ## Type:        yesno
 ## Default:     no
