@@ -324,7 +324,7 @@ async fn serve_command(args: ServeArgs) -> anyhow::Result<()> {
     _ = l10n_helpers::init_locale();
     init_logging().context("Could not initialize the logger")?;
 
-    let (events_tx, events_rx) = channel(128);
+    let (events_tx, events_rx) = channel(512);
     monitor_events_channel(events_rx);
 
     let config = web::ServiceConfig::load()?;
@@ -383,9 +383,9 @@ fn write_token(path: &str, secret: &str) -> anyhow::Result<()> {
 fn monitor_events_channel(mut events_rx: Receiver) {
     tokio::spawn(async move {
         loop {
-            if let Err(error) = events_rx.recv().await {
-                eprintln!("Error receiving events: {error}");
-                break;
+            match events_rx.recv().await {
+                Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => (),
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
             }
         }
     });
