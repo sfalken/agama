@@ -267,10 +267,6 @@ du -h -s /usr/{share,lib}/locale/
 rm -rf /usr/lib64/gtk-3*/*/printbackends
 # rpm -e --nodeps libcups2 cups-config || true
 
-# disable gnome-session-service
-mkdir -p /home/liveuser/.config/systemd/user/
-ln -sf /dev/null /home/liveuser/.config/systemd/user/gnome-session-service.service
-
 # remove documentation
 du -h -s /usr/share/doc/packages/
 rm -rf /usr/share/doc/packages/*
