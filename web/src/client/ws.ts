@@ -142,10 +142,6 @@ class WSClient implements WSClientIface {
 
   connect(attempt = 0) {
     this.reconnectAttempts = attempt;
-    if (attempt > MAX_ATTEMPTS) {
-      console.log("Max number of WebSocket connection attempts reached.");
-      return;
-    }
     console.log(`Reconnecting WebSocket(attempt: ${attempt})`);
     this.client = this.buildClient();
   }
