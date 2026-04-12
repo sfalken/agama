@@ -324,7 +324,7 @@ async fn serve_command(args: ServeArgs) -> anyhow::Result<()> {
     _ = l10n_helpers::init_locale();
     init_logging().context("Could not initialize the logger")?;
 
-    let (events_tx, events_rx) = channel(16);
+    let (events_tx, events_rx) = channel(128);
     monitor_events_channel(events_rx);
 
     let config = web::ServiceConfig::load()?;

@@ -68,9 +68,12 @@ async fn handle_socket(mut socket: WebSocket, events: event::Sender, _client_id:
                             break;
                         }
                     }
-                    Err(error) => {
-                        tracing::warn!("ws: could not receive the event: {error}");
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                         break;
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        tracing::warn!("ws: reciever lagged, skipped {n} events");
+                        continue;
                     }
                 }
             }
