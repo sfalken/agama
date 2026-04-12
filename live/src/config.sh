@@ -267,6 +267,8 @@ du -h -s /usr/{share,lib}/locale/
 rm -rf /usr/lib64/gtk-3*/*/printbackends
 # rpm -e --nodeps libcups2 cups-config || true
 
+glib-compile-schemas /usr/share/glib-2.0/schemas/
+
 # remove documentation
 du -h -s /usr/share/doc/packages/
 rm -rf /usr/share/doc/packages/*
