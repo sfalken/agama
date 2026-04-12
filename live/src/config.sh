@@ -265,7 +265,7 @@ du -h -s /usr/{share,lib}/locale/
 
 # remove printing support from GTK
 rm -rf /usr/lib64/gtk-3*/*/printbackends
-rpm -e --nodeps libcups2 cups-config || true
+# rpm -e --nodeps libcups2 cups-config || true
 
 # remove documentation
 du -h -s /usr/share/doc/packages/
