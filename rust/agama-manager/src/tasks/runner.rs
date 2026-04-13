@@ -51,8 +51,8 @@ pub struct TasksRunner {
     pub questions: Handler<question::Service>,
     pub security: Handler<security::Service>,
     pub software: Handler<software::Service>,
-    pub storage: Handler<storage::Service>,
-    pub users: Handler<users::Service>,
+    pub storage: Option<Handler<storage::Service>>,
+    pub users: Option<Handler<users::Service>>,
     pub s390: Option<Handler<s390::Service>>,
 }
 

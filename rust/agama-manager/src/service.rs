@@ -34,6 +34,7 @@ use agama_utils::{
     arch::Arch,
     issue, licenses,
     products::{self, ProductSpec},
+    modules::ModuleSet,
     progress, question,
 };
 use async_trait::async_trait;
@@ -118,6 +119,7 @@ pub struct Starter {
     hardware: Option<hardware::Registry>,
     users: Option<Handler<users::Service>>,
     s390: Option<Handler<s390::Service>>,
+    modules: ModuleSet,
 }
 
 impl Starter {
@@ -145,7 +147,13 @@ impl Starter {
             hardware: None,
             users: None,
             s390: None,
+            modules: ModuleSet::load(),     // load image-level config
         }
+    }
+
+    pub fn with_modules(mut self, modules: ModuleSet) -> Self {
+        self.modules = modules;
+        self
     }
 
     pub fn with_bootloader(mut self, bootloader: Handler<bootloader::Service>) -> Self {
@@ -241,7 +249,7 @@ impl Starter {
                 bootloader::Service::starter(self.dbus.clone())
                     .start()
                     .await?
-            }
+                }
         };
 
         let hostname = match self.hostname {
@@ -268,8 +276,8 @@ impl Starter {
         };
 
         let security = match self.security {
-            Some(security) => security,
-            None => security::Service::starter(self.questions.clone()).start()?,
+                Some(security) => security,
+                None => security::Service::starter(self.questions.clone()).start()?,
         };
 
         let software = match self.software {
@@ -287,25 +295,31 @@ impl Starter {
             }
         };
 
-        let storage = match self.storage {
-            Some(storage) => storage,
-            None => {
-                storage::Service::starter(
-                    self.events.clone(),
-                    issues.clone(),
-                    progress.clone(),
-                    self.dbus.clone(),
-                )
-                .start()
-                .await?
+        let storage = if !self.modules.is_enabled("storage") {
+            None
+        } else {
+            match self.storage {
+                Some(storage) => Some(storage),
+                None => {
+                    Some(storage::Service::starter(
+                        self.events.clone(),
+                        issues.clone(),
+                        progress.clone(),
+                        self.dbus.clone(),
+                    )
+                    .start()
+                    .await?)
+                }
             }
         };
 
         let iscsi = match self.iscsi {
             Some(iscsi) => iscsi,
             None => {
+                let storage_handler = storage.as_ref()
+                    .expect("iscsi service requires storage to be enabled");
                 iscsi::Service::starter(
-                    storage.clone(),
+                    storage_handler.clone(),
                     self.events.clone(),
                     progress.clone(),
                     self.dbus.clone(),
@@ -319,8 +333,8 @@ impl Starter {
             Some(files) => files,
             None => {
                 files::Service::starter(progress.clone(), self.questions.clone(), software.clone())
-                    .start()
-                    .await?
+                        .start()
+                        .await?
             }
         };
 
@@ -328,8 +342,8 @@ impl Starter {
             Some(network) => network,
             None => {
                 network::Service::starter(self.events.clone(), progress.clone())
-                    .start()
-                    .await?
+                        .start()
+                        .await?
             }
         };
 
@@ -338,12 +352,16 @@ impl Starter {
             None => hardware::Registry::new_from_system(),
         };
 
-        let users = match self.users {
-            Some(users) => users,
-            None => {
-                users::Service::starter(self.events.clone(), issues.clone())
-                    .start()
-                    .await?
+        let users = if !self.modules.is_enabled("users") {
+            None
+        } else {
+            match self.users {
+                Some(users) => Some(users),
+                None => {
+                    Some(users::Service::starter(self.events.clone(), issues.clone())
+                        .start()
+                        .await?)
+                }
             }
         };
 
@@ -353,8 +371,10 @@ impl Starter {
                 if !Arch::is_s390() {
                     None
                 } else {
+                    let storage_handler = storage.as_ref()
+                        .expect("s390 service requires storage to be enabled");
                     let s390 = s390::Service::starter(
-                        storage.clone(),
+                        storage_handler.clone(),
                         self.events.clone(),
                         progress.clone(),
                         issues.clone(),
@@ -422,7 +442,7 @@ pub struct Service {
     l10n: Handler<l10n::Service>,
     software: Handler<software::Service>,
     network: NetworkSystemClient,
-    storage: Handler<storage::Service>,
+    storage: Option<Handler<storage::Service>>,
     issues: Handler<issue::Service>,
     progress: Handler<progress::Service>,
     questions: Handler<question::Service>,
@@ -432,7 +452,7 @@ pub struct Service {
     product: Option<Arc<RwLock<ProductSpec>>>,
     config: Config,
     system: manager::SystemInfo,
-    users: Handler<users::Service>,
+    users: Option<Handler<users::Service>>,
     s390: Option<Handler<s390::Service>>,
     tasks: Handler<tasks::TasksRunner>,
 }
@@ -507,10 +527,12 @@ impl Service {
         if let Some(locale) = config.locale {
             self.software
                 .cast(software::message::SetLocale::new(locale.as_str()))?;
-            self.storage
-                .cast(storage::message::SetLocale::new(locale.as_str()))?;
-            self.users
-                .cast(users::message::SetLocale::new(locale.as_str()))?;
+            if let Some(storage) = &self.storage {
+                storage.cast(storage::message::SetLocale::new(locale.as_str()))?;
+            }
+            if let Some(users) = &self.users {
+                users.cast(users::message::SetLocale::new(locale.as_str()))?;
+            }
             if let Some(s390) = &self.s390 {
                 s390.cast(s390::message::SetLocale::new(locale.as_str()))?;
             }
@@ -526,12 +548,16 @@ impl Service {
     }
 
     async fn activate_storage(&self) -> Result<(), Error> {
-        self.storage.call(storage::message::Activate).await?;
+        if let Some(storage) = &self.storage {
+            storage.call(storage::message::Activate).await?;
+        }
         Ok(())
     }
 
     async fn probe_storage(&self) -> Result<(), Error> {
-        self.storage.call(storage::message::Probe).await?;
+        if let Some(storage) = &self.storage {
+            storage.call(storage::message::Probe).await?;
+        }
         Ok(())
     }
 
@@ -628,7 +654,13 @@ impl MessageHandler<message::GetSystem> for Service {
         let proxy = self.proxy.call(proxy::message::GetSystem).await?;
         let l10n = self.l10n.call(l10n::message::GetSystem).await?;
         let manager = self.system.clone();
-        let storage = self.storage.call(storage::message::GetSystem).await?;
+
+        let storage = if let Some(storage) = &self.storage {
+            storage.call(storage::message::GetSystem).await?
+        } else {
+            Default::default()
+        };
+
         let iscsi = self.iscsi.call(iscsi::message::GetSystem).await?;
         let network = self.network.get_system().await?;
 
@@ -680,8 +712,16 @@ impl MessageHandler<message::GetExtendedConfig> for Service {
         let proxy = self.proxy.call(proxy::message::GetConfig).await?;
         let questions = self.questions.call(question::message::GetConfig).await?;
         let network = self.network.get_config().await?;
-        let storage = self.storage.call(storage::message::GetConfig).await?;
-        let users = self.users.call(users::message::GetConfig).await?;
+        let storage = if let Some(storage) = &self.storage {
+            storage.call(storage::message::GetConfig).await?
+        } else {
+            None
+        };
+        let users = if let Some(users) = &self.users {
+            Some(users.call(users::message::GetConfig).await?)
+        } else {
+            None
+        };
 
         let s390 = if let Some(s390) = &self.s390 {
             Some(s390.call(s390::message::GetConfig).await?)
@@ -708,7 +748,7 @@ impl MessageHandler<message::GetExtendedConfig> for Service {
             software,
             storage,
             files: None,
-            users: Some(users),
+            users,
             s390,
         })
     }
@@ -748,9 +788,20 @@ impl MessageHandler<message::GetProposal> for Service {
     async fn handle(&mut self, _message: message::GetProposal) -> Result<Option<Proposal>, Error> {
         let hostname = self.hostname.call(hostname::message::GetProposal).await?;
         let l10n = self.l10n.call(l10n::message::GetProposal).await?;
-        let storage = self.storage.call(storage::message::GetProposal).await?;
+
+        let storage = if let Some(storage) = &self.storage {
+            storage.call(storage::message::GetProposal).await?
+        } else {
+            Default::default()
+        };
+
         let network = self.network.get_proposal().await?;
-        let users = self.users.call(users::message::GetProposal).await?;
+
+        let users = if let Some(users) = &self.users {
+            users.call(users::message::GetProposal).await?
+        } else {
+            Default::default()
+        };
 
         // If the software service is busy, it will not answer.
         let software = if self.is_software_available().await? {
@@ -830,7 +881,11 @@ impl MessageHandler<message::RunAction> for Service {
 impl MessageHandler<message::GetStorageModel> for Service {
     /// It returns the storage model.
     async fn handle(&mut self, _message: message::GetStorageModel) -> Result<Option<Value>, Error> {
-        Ok(self.storage.call(storage::message::GetConfigModel).await?)
+        if let Some(storage) = &self.storage {
+            Ok(storage.call(storage::message::GetConfigModel).await?)
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -839,15 +894,18 @@ impl MessageHandler<message::SetStorageModel> for Service {
     /// Sets the storage model.
     async fn handle(&mut self, message: message::SetStorageModel) -> Result<(), Error> {
         checks::check_stage(&self.progress, Stage::Configuring).await?;
-        let storage = self
-            .storage
-            .call(storage::message::GetConfigFromModel::new(message.model))
-            .await?;
-        let config = Config {
-            storage,
-            ..Default::default()
-        };
-        self.update_config(config).await
+        if let Some(storage) = &self.storage {
+            let storage = storage
+                .call(storage::message::GetConfigFromModel::new(message.model))
+                .await?;
+            let config = Config {
+                storage,
+                ..Default::default()
+            };
+            self.update_config(config).await
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -859,10 +917,13 @@ impl MessageHandler<message::SolveStorageModel> for Service {
         message: message::SolveStorageModel,
     ) -> Result<Option<Value>, Error> {
         checks::check_stage(&self.progress, Stage::Configuring).await?;
-        Ok(self
-            .storage
-            .call(storage::message::SolveConfigModel::new(message.model))
-            .await?)
+        if let Some(storage) = &self.storage {
+            Ok(storage
+                .call(storage::message::SolveConfigModel::new(message.model))
+                .await?)
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -883,6 +944,10 @@ impl MessageHandler<users::message::CheckPassword> for Service {
         &mut self,
         message: users::message::CheckPassword,
     ) -> Result<PasswordCheckResult, Error> {
-        Ok(self.users.call(message).await?)
+        if let Some(users) = &self.users {
+            Ok(users.call(message).await?)
+        } else {
+            Ok(Default::default())
+        }
     }
 }

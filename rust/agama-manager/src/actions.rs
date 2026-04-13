@@ -46,10 +46,10 @@ pub struct InstallAction {
     pub network: NetworkSystemClient,
     pub proxy: Handler<proxy::Service>,
     pub software: Handler<software::Service>,
-    pub storage: Handler<storage::Service>,
+    pub storage: Option<Handler<storage::Service>>,
     pub files: Handler<files::Service>,
     pub progress: Handler<progress::Service>,
-    pub users: Handler<users::Service>,
+    pub users: Option<Handler<users::Service>>,
 }
 
 impl InstallAction {
@@ -90,7 +90,9 @@ impl InstallAction {
             ))
             .await?;
 
-        self.storage.call(storage::message::Install).await?;
+        if let Some(storage) = &self.storage {
+            storage.call(storage::message::Install).await?;
+        }
         self.files
             .call(files::message::RunScripts::new(
                 ScriptsGroup::PostPartitioning,
@@ -117,15 +119,21 @@ impl InstallAction {
         self.network.install().await?;
         self.proxy.call(proxy::message::Finish).await?;
         self.hostname.call(hostname::message::Install).await?;
-        self.users.call(users::message::Install).await?;
-        self.storage.call(storage::message::Finish).await?;
+        if let Some(users) = &self.users {
+            users.call(users::message::Install).await?;
+        }
+        if let Some(storage) = &self.storage {
+            storage.call(storage::message::Finish).await?;
+        }
 
         // call files before storage finish as it unmounts /mnt/run which is important for chrooted scripts
         self.files
             .call(files::message::RunScripts::new(ScriptsGroup::Post))
             .await?;
 
-        self.storage.call(storage::message::Umount).await?;
+        if let Some(storage) = &self.storage {
+            storage.call(storage::message::Umount).await?;
+        }
 
         //
         // Finish progress and changes
@@ -166,8 +174,8 @@ pub struct SetConfigAction {
     pub questions: Handler<question::Service>,
     pub security: Handler<security::Service>,
     pub software: Handler<software::Service>,
-    pub storage: Handler<storage::Service>,
-    pub users: Handler<users::Service>,
+    pub storage: Option<Handler<storage::Service>>,
+    pub users: Option<Handler<users::Service>>,
     pub s390: Option<Handler<s390::Service>>,
 }
 
@@ -190,9 +198,13 @@ impl SetConfigAction {
             gettext("Running user pre-installation scripts"),
             gettext("Storing questions settings"),
             gettext("Storing localization settings"),
-            gettext("Storing users settings"),
-            gettext("Configuring iSCSI devices"),
         ];
+
+        if self.users.is_some() {
+            steps.push(gettext("Storing users settings"));
+        }
+
+        steps.push(gettext("Configuring iSCSI devices"));
 
         if self.s390.is_some() {
             steps.push(gettext("Configuring DASD devices"));
@@ -203,11 +215,11 @@ impl SetConfigAction {
         }
 
         if product.is_some() {
-            steps.extend_from_slice(&[
-                gettext("Preparing the software proposal"),
-                gettext("Preparing the storage proposal"),
-                gettext("Storing bootloader settings"),
-            ])
+            steps.push(gettext("Preparing the software proposal"));
+            if self.storage.is_some() {
+                steps.push(gettext("Preparing the storage proposal"));
+            }
+            steps.push(gettext("Storing bootloader settings"));
         }
 
         self.progress
@@ -266,12 +278,13 @@ impl SetConfigAction {
             .call(l10n::message::SetConfig::new(config.l10n.clone()))
             .await?;
 
-        self.progress
-            .call(progress::message::Next::new(Scope::Manager))
-            .await?;
-        self.users
-            .call(users::message::SetConfig::new(config.users.clone()))
-            .await?;
+        if let Some(users) = &self.users {
+            self.progress
+                .call(progress::message::Next::new(Scope::Manager))
+                .await?;
+            users.call(users::message::SetConfig::new(config.users.clone()))
+                .await?;
+        }
 
         self.progress
             .call(progress::message::Next::new(Scope::Manager))
@@ -286,9 +299,11 @@ impl SetConfigAction {
                 .await?;
             // Ensure storage was already probed before configuring s390. Otherwise, probing could
             // fail later if DASD is formatting in a background process (bsc#1259354).
-            let storage_system = self.storage.call(storage::message::GetSystem).await?;
-            if storage_system.is_none() {
-                self.storage.call(storage::message::Probe).await?
+            if let Some(storage) = &self.storage {
+                let storage_system = storage.call(storage::message::GetSystem).await?;
+                if storage_system.is_none() {
+                    storage.call(storage::message::Probe).await?
+                }
             }
             s390.call(s390::message::SetConfig::new(config.s390.clone()))
                 .await?;
@@ -313,17 +328,18 @@ impl SetConfigAction {
 
                 self.set_selinux().await?;
 
-                self.progress
-                    .call(progress::message::Next::new(Scope::Manager))
-                    .await?;
-                let future = self
-                    .storage
-                    .call(storage::message::SetConfig::new(
-                        Arc::clone(product),
-                        config.storage.clone(),
-                    ))
-                    .await?;
-                let _ = future.await;
+                if let Some(storage) = &self.storage {
+                    self.progress
+                        .call(progress::message::Next::new(Scope::Manager))
+                        .await?;
+                    let future = storage
+                        .call(storage::message::SetConfig::new(
+                            Arc::clone(product),
+                            config.storage.clone(),
+                        ))
+                        .await?;
+                    let _ = future.await;
+                }
 
                 // call bootloader always after storage to ensure that bootloader reflect new storage settings
                 self.progress
