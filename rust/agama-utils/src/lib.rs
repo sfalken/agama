@@ -30,6 +30,8 @@ pub mod issue;
 pub mod kernel_cmdline;
 pub mod licenses;
 pub mod logging;
+pub mod modules;
+pub use modules::ModuleSet;
 pub mod openapi;
 pub mod products;
 pub mod progress;
