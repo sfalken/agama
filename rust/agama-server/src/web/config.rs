@@ -41,10 +41,12 @@ pub struct ServiceConfig {
     pub jwt_secret: String,
 }
 
+const JWT_SECRET_FILE: &str = "/run/agama/jwt_secret";
+
 impl ServiceConfig {
     pub fn load() -> Result<Self, ConfigError> {
         const JWT_SECRET_SIZE: usize = 30;
-        let jwt_secret: String = Alphanumeric.sample_string(&mut rand::rng(), JWT_SECRET_SIZE);
+        let jwt_secret: Self::load_or_create_jwt_secret(JWT_SECRET_SIZE);
 
         let config = Config::builder()
             .set_default("jwt_secret", jwt_secret)?
@@ -53,6 +55,29 @@ impl ServiceConfig {
             .add_source(File::with_name("etc/agama.d/server").required(false))
             .build()?;
         config.try_deserialize()
+    }
+
+    fn load_or_create_jwt_secret(size: usize) -> String {
+        use std::fs;
+        use std::io::Write;
+
+        if let Ok(secret) = fs::read_to_string(JWT_SECRET_FILE) {
+            let secret = secret.trim().to_string();
+            if !secret.is_empty() {
+                return secret;
+            }
+        }
+
+        let secret = Alphanumeric.sample_string(&mut rand::rng(), size);
+        if let Ok(mut file) = fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(JWT_SECRET_FILE)
+        {
+            let _ = file.write_all(secret.as_bytes());
+        }
+        secret
     }
 }
 
