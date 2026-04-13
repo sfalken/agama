@@ -196,6 +196,10 @@ impl Default for Registry {
 ///
 /// A product can have multiple modes (e.g., "Traditional" and "Immutable").
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ProductModuleSpec {
+    #[serde(default)]
+    pub disabled: Vec<String>,
+}
 pub struct ProductTemplate {
     pub id: String,
     pub name: String,
@@ -213,6 +217,7 @@ pub struct ProductTemplate {
     pub storage: StorageSpec,
     #[serde(default)]
     pub modes: Vec<ProductModeSpec>,
+    pub modules: ProductModuleSpec,
 }
 
 impl ProductTemplate {
@@ -255,6 +260,7 @@ impl ProductTemplate {
             license: self.license.clone(),
             software,
             storage,
+            modules: self.modules.clone(),
         })
     }
 
@@ -289,6 +295,7 @@ pub struct ProductSpec {
     pub license: Option<String>,
     pub software: SoftwareSpec,
     pub storage: StorageSpec,
+    pub modules: ProductModuleSpec,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Merge)]
