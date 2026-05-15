@@ -87,12 +87,7 @@ software:
     - label: Kalpa-desktop-DVD-x86_64
       archs: x86_64
   mandatory_patterns:
-    - microos_base
-    - microos_base_zypper
-    - microos_defaults
-    - microos_hardware
-    - microos_kde_desktop
-    - microos_selinux
+    - kalpa_base
   optional_patterns: []
   user_patterns:
     - container_runtime
