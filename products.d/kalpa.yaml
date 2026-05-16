@@ -76,6 +76,8 @@ translations:
     zh_TW: 一款採用捲動發行模式的不可變桌面產品，使用 Plasma 桌面環境，憑藉 Flatpak 進行應用程式交付，擁有唯讀基礎系統，並支援系統的自動原子更新
 software:
   installation_repositories:
+    - url: file:///packages/
+      archs: x86_64
     - url: https://download.opensuse.org/tumbleweed/repo/oss/
       archs: x86_64
     - url: https://download.opensuse.org/tumbleweed/repo/non-oss/
