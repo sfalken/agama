@@ -106,7 +106,6 @@ storage:
   space_policy: delete
   volumes:
     - "/"
-    - "/var"
   volume_templates:
     - mount_path: "/"
       filesystem: btrfs
@@ -135,19 +134,5 @@ storage:
         filesystems:
           - btrfs
         auto_size:
-          base_min: 5 GiB
-          base_max: 25 GiB
-          max_fallback_for:
-            - "/var"
-    - mount_path: "/var"
-      filesystem: btrfs
-      mount_options:
-        - "x-initrd.mount"
-        - "nodatacow"
-      size:
-        auto: false
-        min: 5 GiB
-      outline:
-        required: false
-        filesystems:
-          - btrfs
+          base_min: 10 GiB
+          base_max: 40 GiB
