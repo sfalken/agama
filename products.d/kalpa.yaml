@@ -80,7 +80,7 @@ software:
       archs: x86_64
   # device labels for offline installation media
   installation_labels:
-    - label: Kalpa-desktop-DVD-x86_64
+    - label: Install-Kalpa-Desktop-x86_64
       archs: x86_64
   mandatory_patterns:
     - kalpa_base
@@ -98,8 +98,7 @@ security:
   lsm: selinux
   available_lsms:
     selinux:
-      patterns:
-        - microos_selinux
+      patterns: null
     none:
       patterns: null
 
